@@ -192,7 +192,6 @@ setupShape(const unsigned int shaderProgram, unsigned int &VAO, unsigned int &ve
             1.0f, 0.0f, 0.0f
     }, dataVBO);
 
-
     // tell how many vertices to draw
     vertexCount = 3;
 
@@ -215,7 +214,8 @@ setupShape(const unsigned int shaderProgram, unsigned int &VAO, unsigned int &ve
     int colorAttributeLocation = glGetAttribLocation(shaderProgram, "aColor");
 
     glEnableVertexAttribArray(colorAttributeLocation);
-    glVertexAttribPointer(colorAttributeLocation, colorSize, GL_FLOAT, GL_FALSE, 0, (void*)(vertexCount * 3 * sizeof(float)));
+    glVertexAttribPointer(colorAttributeLocation, colorSize, GL_FLOAT, GL_FALSE, 0,
+                          (void*)(vertexCount * 3 * sizeof(float)));
 
 }
 

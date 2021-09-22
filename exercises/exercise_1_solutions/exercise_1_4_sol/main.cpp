@@ -182,8 +182,7 @@ setupShape(const unsigned int shaderProgram, unsigned int &VAO, unsigned int &ve
 
     unsigned int posVBO, colorVBO;
 
-    std::vector<float> positions;
-    std::vector<float> colors;
+    std::vector<float> positions, colors;
 
     int triangleCount = 16;
     float PI = 3.14159265;

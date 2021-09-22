@@ -7,6 +7,8 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include "../exercise_2_1/shader_s.h"
+
 
 /// Shader class from https://learnopengl.com
 /// https://learnopengl.com/code_viewer_gh.php?code=includes/learnopengl/shader.h
@@ -123,4 +125,6 @@ private:
         }
     }
 };
+
+
 #endif

@@ -1,15 +1,15 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <chrono>
 
 
 // function declarations
 // ---------------------
 void createArrayBuffer(const std::vector<float> &array, unsigned int &VBO);
-void setupShape(unsigned int shaderProgram, unsigned int &VAO, unsigned int &vertexCount);
+void setupShape(unsigned int shaderProgram, unsigned int &VAO, unsigned int &vertexCount, unsigned  int &posVBO, unsigned  int &colorVBO, float time);
 void draw(unsigned int shaderProgram, unsigned int VAO, unsigned int vertexCount);
 
 
@@ -129,12 +129,12 @@ int main()
 
     // setup vertex array object (VAO)
     // -------------------------------
-    unsigned int VAO, vertexCount;
+    unsigned int VAO = 0, vertexCount, posVBO = 0 , colorVBO = 0;
     // generate geometry in a vertex array object (VAO), record the number of vertices in the mesh,
     // tells the shader how to read it
-    setupShape(shaderProgram, VAO, vertexCount);
+    setupShape(shaderProgram, VAO, vertexCount, posVBO, colorVBO, 0);
 
-
+    auto start = std::chrono::steady_clock::now();
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window)) {
@@ -153,6 +153,8 @@ int main()
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window); // we normally use 2 frame buffers, a back (to draw on) and a front (to show on the screen)
         glfwPollEvents();
+        float elapsed = (float) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count() / 1000;
+        setupShape(shaderProgram, VAO, vertexCount, posVBO, colorVBO, elapsed);
     }
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
@@ -166,7 +168,8 @@ int main()
 // -------------------------------------------------------------------------------------------------
 void createArrayBuffer(const std::vector<float> &array, unsigned int &VBO){
     // create the VBO on OpenGL and get a handle to it
-    glGenBuffers(1, &VBO);
+    if(VBO == 0)
+        glGenBuffers(1, &VBO);
     // bind the VBO
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     // set the content of the VBO (type, size, pointer to start, and how it is used)
@@ -176,28 +179,31 @@ void createArrayBuffer(const std::vector<float> &array, unsigned int &VBO){
 
 // create the geometry, a vertex array object representing it, and set how a shader program should read it
 // -------------------------------------------------------------------------------------------------------
-void setupShape(const unsigned int shaderProgram,unsigned int &VAO, unsigned int &vertexCount){
+void setupShape(const unsigned int shaderProgram, unsigned int &VAO, unsigned int &vertexCount, unsigned int &posVBO, unsigned int &colorVBO, float time) {
 
-    unsigned int posVBO, colorVBO;
-    createArrayBuffer(std::vector<float>{
-            // position
-            0.0f,  0.0f, 0.0f,
-            0.5f,  0.0f, 0.0f,
-            0.5f,  0.5f, 0.0f
-    }, posVBO);
+    const double PI = 3.14159265358979323846;
+    const float hPI = (float) PI / 2.f;
+    std::vector<float> vertices;
+    std::vector<float> colors;
+    for (int i = 0; i < 6; i++) {
+        int j = (i > 2) ? i - 1 : i;
+        float angle = j * hPI + time;
+        vertices.insert(vertices.end(), {cos(angle) / 2, sin(angle) / 2, 0.f});
+        colors.insert(colors.end(), {1.f, 1.f, 1.f});
+    }
 
-    createArrayBuffer( std::vector<float>{
-            // color
-            1.0f,  0.0f, 0.0f,
-            1.0f,  0.0f, 0.0f,
-            1.0f,  0.0f, 0.0f
-    }, colorVBO);
+    createArrayBuffer(vertices, posVBO);
+
+
+    createArrayBuffer(colors, colorVBO);
+
 
     // tell how many vertices to draw
-    vertexCount = 3;
+    vertexCount = vertices.size() / 3;
 
     // create a vertex array object (VAO) on OpenGL and save a handle to it
-    glGenVertexArrays(1, &VAO);
+    if (VAO == 0)
+        glGenVertexArrays(1, &VAO);
 
     // bind vertex array object
     glBindVertexArray(VAO);
@@ -220,6 +226,7 @@ void setupShape(const unsigned int shaderProgram,unsigned int &VAO, unsigned int
     glEnableVertexAttribArray(colorAttributeLocation);
     glVertexAttribPointer(colorAttributeLocation, colorSize, GL_FLOAT, GL_FALSE, 0, 0);
 
+    glBindVertexArray(0);
 }
 
 

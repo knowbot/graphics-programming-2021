@@ -1,18 +1,23 @@
 #version 330 core
-layout (location = 0) in vec2 pos;   // the position variable has attribute position 0
-// TODO 2.2 add velocity and timeOfBirth as vertex attributes
+layout (location = 0) in vec2 pos;
+layout (location = 1) in vec2 velocity;
+layout (location = 2) in float timeOfBirth;
 
-// TODO 2.3 create and use a float uniform for currentTime
+uniform float currentTime;
 
-// TODO 2.6 create out variable to send the age of the particle to the fragment shader
+out float age;
 
 void main()
 {
-    // TODO 2.3 use the currentTime to control the particle in different stages of its lifetime
-
-    // TODO 2.6 send the age of the particle to the fragment shader using the out variable you have created
-
     // this is the output position and and point size (this time we are rendering points, instad of triangles!)
-    gl_Position = vec4(pos, 0.0, 1.0);
-    gl_PointSize = 10.0;
+    if (timeOfBirth == 0) {
+        gl_Position = vec4(-2.0, -2.0, -2.0, 0.0);
+        return;
+    }
+    age = currentTime - timeOfBirth;
+    if(age > 10.0)
+        age = 10.0;
+    vec2 newPos = pos + velocity * age;
+    gl_Position = vec4(newPos, 0.0, 1.0);
+    gl_PointSize = mix(0.1, 20, age);
 }

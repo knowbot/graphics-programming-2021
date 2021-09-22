@@ -9,14 +9,15 @@
 // function declarations
 // ---------------------
 void createArrayBuffer(const std::vector<float> &array, unsigned int &VBO);
-void setupShape(unsigned int shaderProgram, unsigned int &VAO, unsigned int &vertexCount);
+void
+setupShape(const unsigned int shaderProgram, unsigned int &VAO, unsigned int &vertexCount, unsigned int &posVBO, unsigned int &colorVBO, const std::vector<float>& points);
 void draw(unsigned int shaderProgram, unsigned int VAO, unsigned int vertexCount);
 
 
 // glfw functions
 // --------------
 void framebufferSizeCallback(GLFWwindow* window, int width, int height);
-void processInput(GLFWwindow *window);
+void processInput(GLFWwindow* window, std::vector<float>& points);
 
 
 // settings
@@ -126,21 +127,25 @@ int main()
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
+    glEnable(GL_PROGRAM_POINT_SIZE);
+    glPointSize(4.0f);
 
     // setup vertex array object (VAO)
     // -------------------------------
-    unsigned int VAO, vertexCount;
-    // generate geometry in a vertex array object (VAO), record the number of vertices in the mesh,
-    // tells the shader how to read it
-    setupShape(shaderProgram, VAO, vertexCount);
+    unsigned int VAO = 0, vertexCount, posVBO = 0 , colorVBO = 0;;
+//    // generate geometry in a vertex array object (VAO), record the number of vertices in the mesh,
+//    // tells the shader how to read it
+//    setupShape(shaderProgram, VAO, vertexCount);
 
 
     // render loop
     // -----------
+    std::vector<float> points;
+    setupShape(shaderProgram, VAO, vertexCount, posVBO, colorVBO, points);
     while (!glfwWindowShouldClose(window)) {
         // input
         // -----
-        processInput(window);
+        processInput(window, points);
 
         // render
         // ------
@@ -153,8 +158,9 @@ int main()
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window); // we normally use 2 frame buffers, a back (to draw on) and a front (to show on the screen)
         glfwPollEvents();
-    }
 
+        setupShape(shaderProgram, VAO, vertexCount, posVBO, colorVBO, points);
+    }
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
     glfwTerminate();
@@ -166,7 +172,8 @@ int main()
 // -------------------------------------------------------------------------------------------------
 void createArrayBuffer(const std::vector<float> &array, unsigned int &VBO){
     // create the VBO on OpenGL and get a handle to it
-    glGenBuffers(1, &VBO);
+    if(VBO == 0)
+        glGenBuffers(1, &VBO);
     // bind the VBO
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     // set the content of the VBO (type, size, pointer to start, and how it is used)
@@ -176,28 +183,22 @@ void createArrayBuffer(const std::vector<float> &array, unsigned int &VBO){
 
 // create the geometry, a vertex array object representing it, and set how a shader program should read it
 // -------------------------------------------------------------------------------------------------------
-void setupShape(const unsigned int shaderProgram,unsigned int &VAO, unsigned int &vertexCount){
+void setupShape(const unsigned int shaderProgram, unsigned int &VAO, unsigned int &vertexCount, unsigned int &posVBO, unsigned int &colorVBO, const std::vector<float>& points) {
 
-    unsigned int posVBO, colorVBO;
-    createArrayBuffer(std::vector<float>{
-            // position
-            0.0f,  0.0f, 0.0f,
-            0.5f,  0.0f, 0.0f,
-            0.5f,  0.5f, 0.0f
-    }, posVBO);
-
-    createArrayBuffer( std::vector<float>{
-            // color
-            1.0f,  0.0f, 0.0f,
-            1.0f,  0.0f, 0.0f,
-            1.0f,  0.0f, 0.0f
-    }, colorVBO);
+    std::vector<float> colors;
+    for(int i = 0; i < points.size() / 3; i++) {
+        colors.insert(colors.end(), {1.f, 1.f, 1.f});
+    }
+    if(!points.empty()) {
+        createArrayBuffer(points, posVBO);
+        createArrayBuffer(colors, colorVBO);
+    }
 
     // tell how many vertices to draw
-    vertexCount = 3;
-
+    vertexCount = points.size() / 3;
     // create a vertex array object (VAO) on OpenGL and save a handle to it
-    glGenVertexArrays(1, &VAO);
+    if (VAO == 0)
+        glGenVertexArrays(1, &VAO);
 
     // bind vertex array object
     glBindVertexArray(VAO);
@@ -220,6 +221,7 @@ void setupShape(const unsigned int shaderProgram,unsigned int &VAO, unsigned int
     glEnableVertexAttribArray(colorAttributeLocation);
     glVertexAttribPointer(colorAttributeLocation, colorSize, GL_FLOAT, GL_FALSE, 0, 0);
 
+    glBindVertexArray(0);
 }
 
 
@@ -231,16 +233,25 @@ void draw(const unsigned int shaderProgram, const unsigned int VAO, const unsign
     // bind vertex array object
     glBindVertexArray(VAO);
     // draw geometry
-    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+    glDrawArrays(GL_POINTS, 0, vertexCount);
 }
 
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
-void processInput(GLFWwindow *window)
-{
+void processInput(GLFWwindow *window, std::vector<float> &points) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    auto mouseState = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
+    double xPos, yPos;
+    int width, height;
+    glfwGetWindowSize(window, &width, &height);
+    if (mouseState == GLFW_PRESS) {
+            glfwGetCursorPos(window, &xPos, &yPos);
+            auto x = (float)(xPos / width * 2 - 1);
+            auto y = -(float)(yPos / height * 2 - 1);
+            points.insert(points.end(), {x, y, 0.f});
+    }
 }
 
 

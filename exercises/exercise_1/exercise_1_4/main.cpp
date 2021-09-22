@@ -9,7 +9,8 @@
 // function declarations
 // ---------------------
 void createArrayBuffer(const std::vector<float> &array, unsigned int &VBO);
-void setupShape(unsigned int shaderProgram, unsigned int &VAO, unsigned int &vertexCount);
+void
+setupShape(const unsigned int shaderProgram, unsigned int &VAO, unsigned int &vertexCount, std::vector<float> points);
 void draw(unsigned int shaderProgram, unsigned int VAO, unsigned int vertexCount);
 
 
@@ -132,7 +133,7 @@ int main()
     unsigned int VAO, vertexCount;
     // generate geometry in a vertex array object (VAO), record the number of vertices in the mesh,
     // tells the shader how to read it
-    setupShape(shaderProgram, VAO, vertexCount);
+    setupShape(shaderProgram, VAO, vertexCount, std::vector<float>());
 
 
     // render loop
@@ -176,25 +177,40 @@ void createArrayBuffer(const std::vector<float> &array, unsigned int &VBO){
 
 // create the geometry, a vertex array object representing it, and set how a shader program should read it
 // -------------------------------------------------------------------------------------------------------
-void setupShape(const unsigned int shaderProgram,unsigned int &VAO, unsigned int &vertexCount){
+void
+setupShape(const unsigned int shaderProgram, unsigned int &VAO, unsigned int &vertexCount, std::vector<float> points) {
+    const double PI = 3.14159265358979323846;
+    unsigned int sections = 50;
+    float angle = (2 * (float)PI) / (float)sections;
+    float radius = 0.5f;
+    float a = 0;
+
+    std::vector<float> vertices;
+    std::vector<float> colors;
+    for(unsigned int i = 0; i <= sections; i++) {
+        vertices.insert(vertices.end(), {cos(a) * radius, sin(a) * radius, 0.0f});
+        colors.insert(colors.end(), {sin(a), sin(a + 2 * (float)PI / 3.f), sin(a +  4 * (float)PI / 3.f)});
+        vertices.insert(vertices.end(), {0.0f, 0.0f, 0.0f});
+        colors.insert(colors.end(), {1.f, 1.f, 1.f});
+        if(i == sections) // make sure that the first and last triangle share a vertex
+            a = 0;
+        else
+            a = (float)i * angle;
+        vertices.insert(vertices.end(), {cos(a) * radius, sin(a) * radius, 0.0f});
+        colors.insert(colors.end(), {sin(a), sin(a + 2 * (float)PI / 3.f), sin(a +  4 * (float)PI / 3.f)});
+    }
 
     unsigned int posVBO, colorVBO;
     createArrayBuffer(std::vector<float>{
-            // position
-            0.0f,  0.0f, 0.0f,
-            0.5f,  0.0f, 0.0f,
-            0.5f,  0.5f, 0.0f
+          vertices
     }, posVBO);
 
     createArrayBuffer( std::vector<float>{
-            // color
-            1.0f,  0.0f, 0.0f,
-            1.0f,  0.0f, 0.0f,
-            1.0f,  0.0f, 0.0f
+           colors
     }, colorVBO);
 
     // tell how many vertices to draw
-    vertexCount = 3;
+    vertexCount = vertices.size();
 
     // create a vertex array object (VAO) on OpenGL and save a handle to it
     glGenVertexArrays(1, &VAO);
@@ -219,7 +235,6 @@ void setupShape(const unsigned int shaderProgram,unsigned int &VAO, unsigned int
 
     glEnableVertexAttribArray(colorAttributeLocation);
     glVertexAttribPointer(colorAttributeLocation, colorSize, GL_FLOAT, GL_FALSE, 0, 0);
-
 }
 
 

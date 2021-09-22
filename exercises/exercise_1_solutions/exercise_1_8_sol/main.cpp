@@ -8,7 +8,8 @@
 
 // function declarations
 // ---------------------
-void setupShape(unsigned int shaderProgram, unsigned int &VAO, unsigned int &vertexCount);
+void
+setupShape(const unsigned int shaderProgram, unsigned int &VAO, unsigned int &vertexCount, std::vector<float> points);
 void draw(unsigned int shaderProgram, unsigned int VAO, unsigned int vertexCount);
 void createArrayBuffer(const std::vector<float> &array, const std::vector<GLint> &indices,
                        unsigned int &VBO, unsigned int &EBO);
@@ -133,7 +134,7 @@ int main()
     unsigned int VAO, vertexCount;
     // generate geometry in a vertex array object (VAO), record the number of vertices in the mesh,
     // tells the shader how to read it
-    setupShape(shaderProgram, VAO, vertexCount);
+    setupShape(shaderProgram, VAO, vertexCount, std::vector<float>());
 
 
     // render loop
@@ -181,7 +182,8 @@ void createArrayBuffer(const std::vector<float> &array, const std::vector<GLint>
 
 // create the geometry, a vertex array object representing it, and set how a shader program should read it
 // -------------------------------------------------------------------------------------------------------
-void setupShape(const unsigned int shaderProgram,unsigned int &VAO, unsigned int &vertexCount){
+void
+setupShape(const unsigned int shaderProgram, unsigned int &VAO, unsigned int &vertexCount, std::vector<float> points) {
 
     unsigned int vertexDataVBO, vertexIndicesEBO;// posVBO, colorVBO;
 

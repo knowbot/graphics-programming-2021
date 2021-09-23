@@ -7,6 +7,8 @@ uniform float currentTime;
 
 out float age;
 
+const float ageMax = 10.0;
+
 void main()
 {
     // this is the output position and and point size (this time we are rendering points, instad of triangles!)
@@ -19,5 +21,5 @@ void main()
         age = 10.0;
     vec2 newPos = pos + velocity * age;
     gl_Position = vec4(newPos, 0.0, 1.0);
-    gl_PointSize = mix(0.1, 20, age);
+    gl_PointSize = mix(1, 20, age / ageMax);
 }

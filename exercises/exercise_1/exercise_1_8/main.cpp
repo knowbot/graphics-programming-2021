@@ -181,7 +181,7 @@ void createElementArrayBuffer(const std::vector<unsigned int> &array, unsigned i
     // bind the EBO
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     // set the content of the EBO (type, size, pointer to start, and how it is used)
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, array.size() * sizeof(GLfloat), &array[0], GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, array.size() * sizeof(GLint), &array[0], GL_STATIC_DRAW);
 }
 
 
@@ -202,10 +202,8 @@ setupShape(const unsigned int shaderProgram, unsigned int &VAO, unsigned int &ve
     std::vector<unsigned int> indices;
     // add center
     data.insert(data.end(), {0.0f, 0.0f, 0.0f});
-    data.insert(data.end(), {1.f, 1.f, 1.f});
     for(unsigned int i = 1; i <= sections; i++) {
         data.insert(data.end(), {cos(a) * radius, sin(a) * radius, 0.0f});
-        data.insert(data.end(), {sin(a), sin(a + 2 * (float)PI / 3.f), sin(a +  4 * (float)PI / 3.f)});
         auto next = (i == sections ? 1 : i + 1);
         indices.insert(indices.end(), {i, 0, next});
         a = (float)i * angle;
@@ -229,13 +227,7 @@ setupShape(const unsigned int shaderProgram, unsigned int &VAO, unsigned int &ve
     int posAttributeLocation = glGetAttribLocation(shaderProgram, "aPos");
 
     glEnableVertexAttribArray(posAttributeLocation);
-    glVertexAttribPointer(posAttributeLocation, posSize, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), nullptr);
-
-    int colorSize = 3;
-    int colorAttributeLocation = glGetAttribLocation(shaderProgram, "aColor");
-
-    glEnableVertexAttribArray(colorAttributeLocation);
-    glVertexAttribPointer(colorAttributeLocation, colorSize, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+    glVertexAttribPointer(posAttributeLocation, posSize, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), nullptr);
 }
 
 

@@ -26,7 +26,7 @@ unsigned int createElementArrayBuffer(std::vector<unsigned int> &array);
 unsigned int createVertexArray(std::vector<float> &positions, std::vector<float> &colors, std::vector<unsigned int> &indices);
 void setup();
 void drawSceneObject(SceneObject obj);
-void drawPlane();
+void drawPlane(float currentTime);
 
 // glfw functions
 // --------------
@@ -129,7 +129,7 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shaderProgram->use();
-        drawPlane();
+        drawPlane(0);
 
         // we swap buffers because we have two color buffers:
         // one with the currently displayed image (aka front buffer) and one where we draw into (aka back buffer)
@@ -151,15 +151,32 @@ int main()
 }
 
 
-void drawPlane(){
+void drawPlane(float currentTime) {
     // TODO 3.all create and apply your transformation matrices here
     //  you will need to transform the pose of the pieces of the plane by manipulating glm matrices and uploading a
     //  uniform mat4 model matrix to the vertex shader
-
+    glm::mat4 model = glm::mat4(1.0);
+    shaderProgram->setMat4("model", model);
     // body
     drawSceneObject(planeBody);
     // right wing
     drawSceneObject(planeWing);
+    // left wing
+    auto leftWing = glm::scale(-1.f, 1.f, 1.f) * model;
+    shaderProgram->setMat4("model", leftWing);
+    drawSceneObject(planeWing);
+    // right small wing
+    auto rightWingSmall = glm::translate(0.0f,-0.5f, 0.0f) * glm::scale(glm::vec3(0.5f)) * model;
+    shaderProgram->setMat4("model", rightWingSmall);
+    drawSceneObject(planeWing);
+    // left small wing
+    auto leftWingSmall = glm::translate(0.0f,-0.5f, 0.0f) * glm::scale(-0.5f, 0.5f, 0.5f) * model;
+    shaderProgram->setMat4("model",  leftWingSmall);
+    drawSceneObject(planeWing);
+    // propeller
+    auto propeller = glm::translate(0.0f,0.5f, 0.0f) * glm::rotateY(glm::radians(90.f) * sin(currentTime)) * glm::rotateX(glm::radians(90.f)) * glm::scale(glm::vec3(0.5f)) * model;
+    shaderProgram->setMat4("model",  propeller);
+    drawSceneObject(planePropeller);
 
 }
 
@@ -184,6 +201,10 @@ void setup(){
                                       airplane.planeWingIndices);
     planeWing.vertexCount = airplane.planeWingIndices.size();
 
+    planePropeller.VAO = createVertexArray(airplane.planePropellerVertices,
+                                           airplane.planePropellerColors,
+                                           airplane.planePropellerIndices);
+    planePropeller.vertexCount = airplane.planePropellerIndices.size();
 }
 
 

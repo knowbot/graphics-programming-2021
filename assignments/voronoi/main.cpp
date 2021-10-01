@@ -187,7 +187,6 @@ void button_input_callback(GLFWwindow* window, int button, int action, int mods)
         glfwGetCursorPos(window, &xPos, &yPos);
         auto x = (float)(xPos / width * 2.0f - 1.0f);
         auto y = - (float)(yPos / height * 2.0f - 1.0f);
-        srand((unsigned)time(nullptr));
         auto r = (float) dist(mt);
         auto g = (float) dist(mt);
         auto b = (float) dist(mt);

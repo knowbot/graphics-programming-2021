@@ -65,8 +65,9 @@ float currentTime;
 glm::vec2 clickStart(0.0f), clickEnd(0.0f);
 
 // TODO 4.1 and 4.2 - global variables you might need
-
-
+glm::vec2 throwDirection;
+glm::vec2 planePosition;
+float planeSpeed;
 
 int main()
 {
@@ -171,8 +172,9 @@ void drawArrow(){
 void drawPlane(){
     // TODO - 4.1 translate and rotate the plane
 
-    glm::mat4 rotation(1.0f);
-    glm::mat4 translation(1.0f);
+    glm::mat4 rotation = glm::lookAt(glm::vec3(planePosition, 0), glm::vec3(clickEnd, 0), glm::vec3(0, 0, 1));
+    glm::mat4 translation = glm::translate(planePosition.x, planePosition.y, 0);
+    glm::translate(glm::vec3(1, 1, 1));
 
     // scale matrix to make the plane 10 times smaller
     glm::mat4 scale = glm::scale(.1f, .1f, .1f);
@@ -219,7 +221,7 @@ void drawPlane(){
 
 void setup(){
     // initialize shaders
-    shaderProgram = new Shader("shader.vert", "shader.frag");
+    shaderProgram = new Shader("shaders/shader.vert", "shaders/shader.frag");
 
     PlaneModel& airplane = PlaneModel::getInstance();
     // initialize plane body mesh objects
@@ -322,11 +324,14 @@ void button_input_callback(GLFWwindow* window, int button, int action, int mods)
         cursorInNdc(screenX, screenY, screenW, screenH, clickStart.x, clickStart.y);
         // reset the end position
         cursorInNdc(screenX, screenY, screenW, screenH, clickEnd.x, clickEnd.y);
-
+        planePosition = clickStart;
     }
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
         // set the end position
         cursorInNdc(screenX, screenY, screenW, screenH, clickEnd.x, clickEnd.y);
+        if(clickStart != clickEnd) {
+            throwDirection = clickEnd - clickStart;
+        }
         // reset the start position
         cursorInNdc(screenX, screenY, screenW, screenH, clickStart.x, clickStart.y);
     }

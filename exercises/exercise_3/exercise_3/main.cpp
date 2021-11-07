@@ -154,34 +154,46 @@ int main()
 void drawPlane(float currentTime) {
     // TODO 3.all create and apply your transformation matrices here
     //  you will need to transform the pose of the pieces of the plane by manipulating glm matrices and uploading a
-    //  uniform mat4 scaledModel matrix to the vertex shader
+    //  uniform mat4 model matrix to the vertex shader
+
+    auto rotation = glm::rotateZ(planeHeading);
+    planePosition.x += (rotation * glm::vec4(0, planeSpeed, 0, 1)).x;
+    planePosition.y += (rotation * glm::vec4(0, planeSpeed, 0, 1)).y;
+    planePosition.x = glm::mod(planePosition.x + 1.0f, 2.0f) - 1.0f;
+    planePosition.y = glm::mod(planePosition.y + 1.0f, 2.0f) - 1.0f;
+
+    // position matrix based on current planePosition
+    glm::mat4 translation = glm::translate(planePosition.x, planePosition.y, 0);
+    auto tilt = glm::rotateY(glm::radians<float>(tiltAngle));
     auto scale = glm::scale(0.1f, 0.1f, 0.1f);
-    auto scaledModel =  scale * glm::mat4(1.0);
+    auto model = translation * rotation * tilt * scale;
+
     auto smallScale = glm::scale(glm::vec3(0.5f));
     auto leftScale = glm::scale(-1.f, 1.f, 1.f);
     auto tailTranslate = glm::translate(0.0f,-1.0f, 0.0f);
-    auto headTranslate = glm::translate(0.0f, 1.0f, 0.0f);
+    `auto headTranslate = glm::translate(0.0f, 1.0f, 0.0f);`
     auto propRotation = glm::rotateY(glm::radians(90.f) * currentTime * 10.f) * glm::rotateX(glm::radians(90.f));
+
     // ORDER: scale -> rotation -> translation
-    shaderProgram->setMat4("model", scaledModel);
+    shaderProgram->setMat4("model", model);
     // body
     drawSceneObject(planeBody);
     // right wing
     drawSceneObject(planeWing);
     // left wing
-    auto leftWing = scaledModel * leftScale;
+    auto leftWing = model * leftScale;
     shaderProgram->setMat4("model", leftWing);
     drawSceneObject(planeWing);
     // right small wing
-    auto rightWingSmall = scaledModel * smallScale * tailTranslate;
+    auto rightWingSmall = model * smallScale * tailTranslate;
     shaderProgram->setMat4("model", rightWingSmall);
     drawSceneObject(planeWing);
     // left small wing
-    auto leftWingSmall = scaledModel * leftScale * smallScale * tailTranslate;
+    auto leftWingSmall = model * leftScale * smallScale * tailTranslate;
     shaderProgram->setMat4("model",  leftWingSmall);
     drawSceneObject(planeWing);
     // propeller
-    auto propeller = scaledModel * smallScale * headTranslate * propRotation;
+    auto propeller = model * smallScale * headTranslate * propRotation;
     shaderProgram->setMat4("model",  propeller);
 
     drawSceneObject(planePropeller);
@@ -268,7 +280,15 @@ void processInput(GLFWwindow *window)
         glfwSetWindowShouldClose(window, true);
     // TODO 3.4 control the plane (turn left and right) using the A and D keys
     // you will need to read A and D key press inputs
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+        planeHeading += 0.025f;
+        tiltAngle = -45.f;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+        planeHeading -= 0.025f;
+        tiltAngle = 45.f;
+    }
     // if GLFW_KEY_D is GLFW_PRESS, plane turn right
 
 }

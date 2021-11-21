@@ -206,7 +206,7 @@ void drawObject(){
 
 void setup(){
     // initialize shaders
-    shaderProgram = new Shader("shader.vert", "shader.frag");
+    shaderProgram = new Shader("geometry.vert", "geometry.frag");
 
     Primitives& primitives = Primitives::getInstance();
     cube.VAO = createVertexArray(primitives.cubeVertices,

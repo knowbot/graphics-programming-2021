@@ -8,6 +8,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/epsilon.hpp>
 
 #include "glmutils.h"
 
@@ -61,13 +62,15 @@ Shader* shaderProgram;
 
 // global variables used for control
 // -----------------------------------
-float currentTime;
+float currentTime = 0.f;
 glm::vec2 clickStart(0.0f), clickEnd(0.0f);
 
 // TODO 4.1 and 4.2 - global variables you might need
 glm::vec2 throwDirection;
 glm::vec2 planePosition;
 float planeSpeed;
+bool actionStart = false;
+bool actionEnd = false;
 
 int main()
 {
@@ -171,8 +174,30 @@ void drawArrow(){
 
 void drawPlane(){
     // TODO - 4.1 translate and rotate the plane
+    static float rotAngle = 0.f;
+    static glm::vec3 up = glm::vec3(0, 0, 1);
+    // reset plane on new action
+    if(actionStart && !actionEnd) {
+        planeSpeed = 0.f;
+        planePosition = clickStart;
+    } else if(!actionStart && actionEnd) // if not dragging, speed up
+        planeSpeed = glm::length(throwDirection) * 0.05f;
 
-    glm::mat4 rotation = glm::lookAt(glm::vec3(planePosition, 0), glm::vec3(clickEnd, 0), glm::vec3(0, 0, 1));
+
+    if(actionStart) {
+        throwDirection = clickEnd - clickStart;
+        if(glm::length(throwDirection) > 1e-4) {
+            rotAngle = glm::acos(glm::dot(glm::normalize(throwDirection), glm::vec2(0, 1)));
+            if(throwDirection.x > 0)
+                rotAngle *= -1.f;
+        }
+    }
+
+    actionEnd = actionStart;
+    glm::mat4 rotation = glm::rotate(rotAngle, up);
+    planePosition = (rotation * glm::vec4(0, planeSpeed, 0, 1)).xy;
+    planePosition.x = glm::mod(planePosition.x + 1.0f, 2.0f) -1.0f;
+    planePosition.y = glm::mod(planePosition.y + 1.0f, 2.0f) -1.0f;
     glm::mat4 translation = glm::translate(planePosition.x, planePosition.y, 0);
     glm::translate(glm::vec3(1, 1, 1));
 
@@ -221,7 +246,7 @@ void drawPlane(){
 
 void setup(){
     // initialize shaders
-    shaderProgram = new Shader("shaders/shader.vert", "shaders/shader.frag");
+    shaderProgram = new Shader("shaders/geometry.vert", "shaders/geometry.frag");
 
     PlaneModel& airplane = PlaneModel::getInstance();
     // initialize plane body mesh objects
@@ -324,16 +349,14 @@ void button_input_callback(GLFWwindow* window, int button, int action, int mods)
         cursorInNdc(screenX, screenY, screenW, screenH, clickStart.x, clickStart.y);
         // reset the end position
         cursorInNdc(screenX, screenY, screenW, screenH, clickEnd.x, clickEnd.y);
-        planePosition = clickStart;
+        startDrag = true;
     }
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
         // set the end position
         cursorInNdc(screenX, screenY, screenW, screenH, clickEnd.x, clickEnd.y);
-        if(clickStart != clickEnd) {
-            throwDirection = clickEnd - clickStart;
-        }
         // reset the start position
         cursorInNdc(screenX, screenY, screenW, screenH, clickStart.x, clickStart.y);
+        startDrag = false;
     }
 }
 

@@ -88,7 +88,7 @@ int main()
 
     // build and compile our shader program
     // ------------------------------------
-    shaderProgram = new Shader("shaders/shader.vert", "shaders/shader.frag");
+    shaderProgram = new Shader("shaders/geometry.vert", "shaders/geometry.frag");
 
     // the model was originally baked with lights for a left handed coordinate system, we are "fixing" the z-coordinate
     // so we can work with a right handed coordinate system
@@ -190,11 +190,11 @@ void drawPlane(float currentTime) {
     drawSceneObject(planeWing);
     // left small wing
     auto leftWingSmall = model * leftScale * smallScale * tailTranslate;
-    shaderProgram->setMat4("model",  leftWingSmall);
+    shaderProgram->setMat4("model", leftWingSmall);
     drawSceneObject(planeWing);
     // propeller
     auto propeller = model * smallScale * headTranslate * propRotation;
-    shaderProgram->setMat4("model",  propeller);
+    shaderProgram->setMat4("model", propeller);
 
     drawSceneObject(planePropeller);
 

@@ -305,7 +305,7 @@ void drawPlane(){
 
 void setup(){
     // initialize shaders
-    shaderProgram = new Shader("shaders/shader.vert", "shaders/shader.frag");
+    shaderProgram = new Shader("shaders/geometry.vert", "shaders/geometry.frag");
 
     PlaneModel& airplane = PlaneModel::getInstance();
     // initialize plane body mesh objects

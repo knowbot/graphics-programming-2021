@@ -221,7 +221,7 @@ void drawPlane(glm::mat4 model){
 
 void setup(){
     // initialize shaders
-    shaderProgram = new Shader("shaders/shader.vert", "shaders/shader.frag");
+    shaderProgram = new Shader("shaders/geometry.vert", "shaders/geometry.frag");
 
     // load floor mesh into openGL
     floorObj.VAO = createVertexArray(floorVertices, floorColors, floorIndices);

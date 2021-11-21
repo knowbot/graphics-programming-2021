@@ -136,7 +136,6 @@ void bindAttributes(){
     glEnableVertexAttribArray(vertexLocation);
     glVertexAttribPointer(vertexLocation, posSize, GL_FLOAT, GL_FALSE, particleSize * sizeOfFloat, nullptr);
 
-
     int velSize = 2; // each position has x,y
     GLuint vertexVelocity = glGetAttribLocation(shaderProgram->ID, "velocity");
     std::cout << vertexVelocity << std::endl;

@@ -207,21 +207,23 @@ glm::mat4 trackballRotation(){
 }
 
 glm::mat4 viewProjection(){
-
     if (g_perspectiveProjection) {
         // TODO 5.1 - create a view matrix, that transforms points in the world coordinates to the camera coordinates
         //  you can use glm::lookat for that, set position to (0,0,2) and the camera forward to (0,0,-1)
-
+        auto eye = glm::vec3(0, 0, 2);
+        auto fwd = glm::vec3(0, 0, -1);
+        auto ctr = eye + fwd;
+        glm::mat4 view = glm::lookAt(eye, ctr, glm::vec3(0,1,0));
 
         // TODO 5.1 - create a projection using the glm::perspectiveFov function,
         //  and use it to view the object (i.e. multiply with model)
-
+        glm::mat4 projection = glm::perspectiveFov(glm::radians(70.f), (float)SCR_WIDTH, (float)SCR_HEIGHT, 0.01f, 10.f);
 
         // TODO 5.1 - multiply the matrices together in the right order to return the viewprojection matrix,
         //  you want the final matrix to first move points into camera coordinates, and then project
         //  press 6 to see the result
 
-        return glm::mat4(1);
+        return projection * view;
     }
     else {
         // ortographic in the ndc range
@@ -288,7 +290,7 @@ void drawObject(){
 
 void setup(){
     // initialize shaders
-    shaderProgram = new Shader("shaders/shader.vert", "shaders/shader.frag");
+    shaderProgram = new Shader("shaders/geometry.vert", "shaders/geometry.frag");
 
     cube.VAO = createVertexArray(cubeVertices, cubeColors, cubeIndices);
     cube.vertexCount = cubeIndices.size();

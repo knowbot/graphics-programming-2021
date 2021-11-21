@@ -67,7 +67,7 @@ int main()
 
     // build and compile our shader program
     // ------------------------------------
-    shaderProgram = new Shader("shaders/shader.vert", "shaders/shader.frag");
+    shaderProgram = new Shader("shaders/geometry.vert", "shaders/geometry.frag");
 
     // NEW!
     // enable built in variable gl_PointSize in the vertex shader
@@ -137,6 +137,7 @@ int main()
 void bindAttributes(){
     int posSize = 2; // each position has x,y
     GLuint vertexLocation = glGetAttribLocation(shaderProgram->ID, "pos");
+    std::cout << vertexLocation << std::endl;
     glEnableVertexAttribArray(vertexLocation);
     glVertexAttribPointer(vertexLocation, posSize, GL_FLOAT, GL_FALSE, particleSize * sizeOfFloat, 0);
 

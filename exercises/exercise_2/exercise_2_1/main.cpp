@@ -53,7 +53,7 @@ int main()
 
     // build and compile our shader program
     // ------------------------------------
-    Shader shader = Shader(".\\shaders\\shader.vert", ".\\shaders\\shader.frag");
+    Shader shader = Shader(".\\shaders\\geometry.vert", ".\\shaders\\geometry.frag");
 
 
     // set up vertex data (and buffer(s)) and configure vertex attributes

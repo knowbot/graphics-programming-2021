@@ -12,6 +12,9 @@
 
 #include "Camera.h"
 
+// Constants
+const int INSTANCES = 5;
+
 // structure to hold render info
 // -----------------------------
 struct SceneObject {
@@ -23,50 +26,8 @@ struct SceneObject {
     }
 };
 
-struct ParticleSystem {
-    static const int ATTR_SIZE = 3;
-
-    std::shared_ptr<Shader> shader;
-    unsigned int VAO{}; // self-explanatory
-    unsigned int VBO{}; // self-explanatory
-    unsigned int particleCount; // total amount of particles
-    unsigned int particleId = 0; // id of last updated particle
-    glm::vec3 offsets = glm::vec3(0);
-    ParticleSystem(Shader* part_shader, unsigned int particleCount) : particleCount(particleCount), shader(part_shader) {
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-
-        glBindVertexArray(VAO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-        // initialize particle buffer, set all values to 0
-        std::vector<float> data(particleCount * ATTR_SIZE);
-        for(unsigned int i = 0; i < data.size(); i++)
-            data[i] = 0.0f;
-        // allocate at openGL controlled memory
-        glBufferData(GL_ARRAY_BUFFER, particleCount * ATTR_SIZE * 4, &data[0], GL_DYNAMIC_DRAW);
-        GLuint vertexLocation = glGetAttribLocation(shader->ID, "pos");
-        std::cout << shader->ID << std::endl;
-        std::cout << vertexLocation << std::endl;
-        glEnableVertexAttribArray(vertexLocation);
-        glVertexAttribPointer(vertexLocation, 3, GL_FLOAT, GL_FALSE, ATTR_SIZE * 4, nullptr);
-    }
-
-    void emitParticle(float x, float y, float z) {
-        glBindVertexArray(VAO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        float pos[ATTR_SIZE];
-        pos[0] = x;
-        pos[1] = y;
-        pos[2] = z;
-        glBufferSubData(GL_ARRAY_BUFFER, particleId * ATTR_SIZE * 4, ATTR_SIZE * 4, pos);
-        particleId = (particleId + 1) % particleCount;
-    }
-    void drawParticles() const {
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_POINTS, 0, particleCount);
-    }
-};
+// forward declaration
+struct WeatherSystem;
 
 // function declarations
 // ---------------------
@@ -75,8 +36,9 @@ unsigned int createElementArrayBuffer(const std::vector<unsigned int> &array);
 unsigned int createVertexArray(const std::vector<float> &positions, const std::vector<float> &colors, const std::vector<unsigned int> &indices);
 void setup();
 void drawObjects(glm::mat4 viewProjection);
-void drawWeather(glm::mat4 viewProjection);
-void simulateWeather();
+void drawRain(glm::mat4 viewProj);
+void drawSnow(glm::mat4 viewProj);
+void drawWeather(glm::mat4 viewProj);
 glm::mat4 getViewProjection();
 
 // glfw and input functions
@@ -97,10 +59,13 @@ const unsigned int SCR_HEIGHT = 600;
 Camera* camera;
 SceneObject cube;
 SceneObject floorObj;
+
 //! Scene object holding the weather particles
-ParticleSystem* weather;
+std::vector<WeatherSystem*> snowWeatherInstances;
+std::vector<WeatherSystem*> rainWeatherInstances;
 Shader* geometryShader;
-Shader* particleShader;
+Shader* rainShader;
+Shader* snowShader;
 
 // global variables used for control
 // ---------------------------------
@@ -111,9 +76,103 @@ std::default_random_engine eng(rd());
 //! Time
 float currentTime, deltaTime = 0.f, lastFrame = 0.f;
 
-//! Particle emission
-glm::vec3 gravityOffset = glm::vec3(0), windOffset = glm::vec3(0);
-float particleSize = 1.f, boxSize = 50.f, gravity = 10.f, windSpeed = 5.f;
+//! The Box
+float boxSize = 50.f;
+
+//! Other useful stuff
+bool toggleRain = true;
+glm::mat4 prevViewProj; // previous view projection matrix
+
+/* Struct that takes care of rendering an instance of weather effects */
+struct WeatherSystem {
+    static const unsigned int ATTR_SIZE = 3; // each vertex has 3 attributes, XYZ position
+
+    std::shared_ptr<Shader> shader; // pointer to the correct shader
+    unsigned int VAO{}; // self-explanatory
+    unsigned int VBO{}; // self-explanatory
+    unsigned int particleCount = 0; // total amount of particles
+    unsigned int vertexCount = 0; // total amount of vertices
+    unsigned int vertsPerParticle = 1; // vertices used to draw each particle
+
+    // offsets and such formalities
+    float particleSize = 10.0f; // size of particles (size of snow, length of rain streaks)
+    float gravDelta = 2.0f; // gravity multiplier
+    float windDelta = 1.0f; // wind multiplier
+    glm::vec3 gravityOffset = glm::vec3(0); // gravity offset
+    glm::vec3 windOffset = glm::vec3(0); // wind offset
+    glm::vec3 randomOffset = glm::vec3(0); // random offset
+
+    /* Constructor, takes shader, number of particles to render and amount of vertices per particle as parameters
+     * and then initializes the rest of the struct. */
+    WeatherSystem(Shader *part_shader, unsigned int particleCount, unsigned int vertsPerParticle)
+    : particleCount(particleCount), shader(part_shader), vertsPerParticle(vertsPerParticle) {
+        // set up buffers
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+        // instance specific offsets and deltas
+        static std::uniform_real_distribution<float> size(10.0f, 40.0f);
+        static std::uniform_real_distribution<float> pos(-boxSize/2, boxSize/2);
+        randomOffset = glm::vec3(pos(eng), pos(eng), pos(eng));
+        particleSize = size(eng);
+        gravDelta = 2.0f * particleSize/10;
+        windDelta = 1.0f * 10/particleSize;
+
+        // calculate amount of vertices to store in memory
+        vertexCount = particleCount * vertsPerParticle;
+        // initialize vertex buffer, set all values to 0
+        std::vector<float> data(vertexCount * ATTR_SIZE);
+        for (float & i : data)
+            i = 0.0f;
+        // allocate at openGL controlled memory
+        glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(GLfloat), &data[0], GL_DYNAMIC_DRAW);
+        GLuint vertexLocation = glGetAttribLocation(shader->ID, "pos");
+        glEnableVertexAttribArray(vertexLocation);
+        glVertexAttribPointer(vertexLocation, 3, GL_FLOAT, GL_FALSE, ATTR_SIZE * sizeof(GLfloat), nullptr);
+    }
+
+    /* Initialize all the particles for the instance, this function is quite self-explanatory; each vertex of the same
+     * particle is initialized with the same starting position. */
+    void initParticles() const {
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        std::uniform_real_distribution<float> pos(-boxSize/2, boxSize/2);
+        std::vector<float> particles;
+        for(unsigned int i = 0; i < particleCount; i++) {
+            float x = pos(eng), y = pos(eng), z = pos(eng);
+            for(unsigned int j = 0; j < vertsPerParticle; j++) {
+                particles.insert(particles.end(), {x, y, z}); // insert random XYZ position
+            }
+        }
+        glBufferData(GL_ARRAY_BUFFER, particles.size() * sizeof(GLfloat), &particles[0], GL_DYNAMIC_DRAW);
+    }
+
+    /* Make the correct draw call for the particles */
+    void drawParticles() const {
+        glBindVertexArray(VAO);
+        switch (vertsPerParticle) {
+            case 1:
+                glDrawArrays(GL_POINTS, 0, vertexCount);
+                break;
+            case 2:
+                glDrawArrays(GL_LINES, 0, vertexCount);
+                break;
+            default:
+                std::cerr << "Draw method not defined for particles with " << vertsPerParticle << " vertices." <<std::endl;
+        }
+    }
+
+    /* Simulate one cycle of weather to update gravity and wind offsets */
+    void simulate() {
+        // self-explanatory
+        gravityOffset -= glm::vec3(0, gravDelta * deltaTime, 0);
+        // to add some variety the wind makes a circle :D
+        windOffset += glm::vec3(sin(currentTime + randomOffset.x)/10, 0, cos(currentTime + randomOffset.z)/10) * windDelta;
+    }
+};
 
 int main()
 {
@@ -150,7 +209,9 @@ int main()
         return -1;
     }
 
+    // onit camera stuff
     camera = new Camera(glm::vec3(.0f, 1.6f, 0.0f));
+    prevViewProj = camera->getViewMatrix();
 
     // setup mesh objects
     // ---------------------------------------
@@ -173,7 +234,7 @@ int main()
     // render loop
     // -----------
     // render every loopInterval seconds
-    float loopInterval = 0.02f;
+    float loopInterval = 1.0f / 60.0f;
     auto begin = std::chrono::high_resolution_clock::now();
 
     while (!glfwWindowShouldClose(window))
@@ -208,7 +269,8 @@ int main()
     }
 
     delete geometryShader;
-    delete particleShader;
+    delete rainShader;
+    delete snowShader;
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
@@ -216,6 +278,43 @@ int main()
     return 0;
 }
 
+void setup() {
+    // initialize shaders
+    geometryShader = new Shader("shaders/geometry.vert", "shaders/geometry.frag");
+    rainShader = new Shader("shaders/rain.vert", "shaders/rain.frag");
+    snowShader = new Shader("shaders/snow.vert", "shaders/snow.frag");
+
+    // load floor mesh into openGL
+    floorObj.VAO = createVertexArray(floorVertices, floorColors, floorIndices);
+    floorObj.vertexCount = floorIndices.size();
+
+    // load cube mesh into openGL
+    cube.VAO = createVertexArray(cubeVertices, cubeColors, cubeIndices);
+    cube.vertexCount = cubeIndices.size();
+
+    // set up rain weather instances
+    rainShader->use();
+    rainShader->setFloat("boxSize", boxSize);
+    for(unsigned int i = 0; i < INSTANCES; i++) {
+        auto instance = new WeatherSystem(rainShader, (unsigned int) 1000/INSTANCES, 2);
+        instance->gravDelta *= 10;
+        instance->initParticles();
+        rainWeatherInstances.push_back(instance);
+    }
+
+    // set up snow weather instances
+    snowShader->use();
+    snowShader->setFloat("boxSize", boxSize);
+    for(unsigned int i = 0; i < INSTANCES; i++) {
+        auto instance = new WeatherSystem(snowShader, (unsigned int) 5000/INSTANCES, 1);
+        instance->initParticles();
+        snowWeatherInstances.push_back(instance);
+    }
+
+    prevViewProj = getViewProjection();
+}
+
+/* simple function to get the view projection matrix */
 glm::mat4 getViewProjection() {
     glm::mat4 projection = glm::perspectiveFov(glm::radians(90.0f), (float)SCR_WIDTH, (float)SCR_HEIGHT, .01f, 100.0f);
     glm::mat4 view = camera->getViewMatrix();
@@ -241,24 +340,50 @@ void drawObjects(glm::mat4 viewProjection){
     drawCube(viewProjection * glm::translate(-2.0f, 1.f, -2.0f) * glm::rotateY(glm::quarter_pi<float>()) * scale);
 }
 
-void simulateWeather() {
-//    std::uniform_real_distribution<float> distr(-0.1f, 0.1f);
-    gravityOffset -= glm::vec3(0, gravity * deltaTime, 0);
-    windOffset += glm::vec3(sin(currentTime)/10, 0, cos(currentTime)/10);
-    weather->offsets = gravityOffset + windOffset;
+void drawWeather(glm::mat4 viewProj) {
+    if(toggleRain)
+        drawRain(viewProj);
+    else
+        drawSnow(viewProj);
+    prevViewProj = viewProj;
 }
 
-void drawWeather(glm::mat4 viewProjection) {
-    weather->shader->use();
-    simulateWeather();
-    auto fwdOffset = camera->forward * boxSize / 2.f;
-    weather->offsets -= camera->position + fwdOffset + boxSize / 2.f;
-    weather->offsets = glm::mod(weather->offsets, boxSize);
-    weather->shader->setMat4("viewMat", viewProjection);
-    weather->shader->setVec3("cameraPos", camera->position);
-    weather->shader->setVec3("forwardOffset", fwdOffset);
-    weather->shader->setVec3("offsets", weather->offsets);
-    weather->drawParticles();
+void drawRain(glm::mat4 viewProj) {
+    for(const auto& instance : rainWeatherInstances) {
+        instance->shader->use(); // start using the correct shader
+        instance->simulate(); // update gravity & wind offsets
+        auto fwdOffset = camera->forward * boxSize / 2.f; // update forward offset
+        auto offsets = instance->gravityOffset + instance->windOffset + instance->randomOffset; // sum them all up
+        offsets -= camera->position + fwdOffset + boxSize / 2.f; // factor in camera position and fwd offset
+        offsets = glm::mod(offsets, boxSize); // constrain them inside the boxSize
+        // set up uniforms
+        instance->shader->setMat4("viewProj", viewProj);
+        instance->shader->setMat4("viewProjPrev", prevViewProj);
+        instance->shader->setVec3("cameraPos", camera->position);
+        instance->shader->setVec3("forwardOffset", fwdOffset);
+        instance->shader->setVec3("offsets", offsets);
+        instance->shader->setVec3("velocity", glm::vec3(0.0f, 1.0f, 0.0f) * instance->gravDelta + glm::normalize(instance->windOffset));
+        instance->shader->setFloat("heightScale", 0.01f * instance->particleSize/10);
+        instance->drawParticles();
+    }
+}
+
+void drawSnow(glm::mat4 viewProj) {
+    for(const auto& instance : snowWeatherInstances) {
+        instance->shader->use(); // start using the correct shader
+        instance->simulate(); // update gravity & wind offsets
+        auto fwdOffset = camera->forward * boxSize / 2.f; // update forward offset
+        auto offsets = instance->gravityOffset + instance->windOffset + instance->randomOffset; // sum them all up
+        offsets -= camera->position + fwdOffset + boxSize / 2.f; // factor in camera position and fwd offset
+        offsets = glm::mod(offsets, boxSize); // constrain them inside the boxSize
+        // set up uniforms
+        instance->shader->setMat4("viewProj", viewProj);
+        instance->shader->setVec3("cameraPos", camera->position);
+        instance->shader->setVec3("forwardOffset", fwdOffset);
+        instance->shader->setVec3("offsets", offsets);
+        instance->shader->setFloat("maxSize", instance->particleSize);
+        instance->drawParticles();
+    }
 }
 
 
@@ -267,30 +392,6 @@ void drawCube(glm::mat4 model){
     geometryShader->setMat4("model", model);
     cube.drawSceneObject();
 }
-
-void setup(){
-    // initialize shaders
-    geometryShader = new Shader("shaders/geometry.vert", "shaders/geometry.frag");
-    particleShader = new Shader("shaders/particle.vert", "shaders/particle.frag");
-
-    // load floor mesh into openGL
-    floorObj.VAO = createVertexArray(floorVertices, floorColors, floorIndices);
-    floorObj.vertexCount = floorIndices.size();
-
-    // load cube mesh into openGL
-    cube.VAO = createVertexArray(cubeVertices, cubeColors, cubeIndices);
-    cube.vertexCount = cubeIndices.size();
-
-    std::uniform_real_distribution<float> distr(-boxSize/2, boxSize/2);
-
-    weather = new ParticleSystem(particleShader, 10000);
-//    weather->shader->setFloat("boxSize", 50.f);
-    for(int i = 0; i < 10000; i++) {
-        // create 5 to 10 particles per frame
-        weather->emitParticle(distr(eng), distr(eng), distr(eng));
-    }
-}
-
 
 unsigned int createVertexArray(const std::vector<float> &positions, const std::vector<float> &colors, const std::vector<unsigned int> &indices){
     unsigned int VAO;
@@ -368,7 +469,10 @@ void processInput(GLFWwindow *window) {
         camera->processKeyInput(Direction::LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
         camera->processKeyInput(Direction::RIGHT, deltaTime);
-
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+        toggleRain = true;
+    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+        toggleRain = false;
 }
 
 
